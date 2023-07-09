@@ -6,6 +6,7 @@ const passport = require('passport')
 const GoogleStrategy = require('passport-google-oauth20').Strategy
 const session = require('express-session')
 const { google } = require('googleapis')
+const { PubSub } = require('@google-cloud/pubsub')
 const axios = require('axios')
 
 passport.serializeUser((user, done) => {
@@ -54,6 +55,22 @@ const generateConfig = (url, accessToken) => {
   }
 }
 
+const generateWatchConfig = (url, accessToken) => {
+  return {
+    method: 'post',
+    url: url,
+    headers: {
+      Authorization: `Bearer ${accessToken} `,
+      'Content-type': 'application/json',
+    },
+    data: {
+      labelIds: ['INBOX'],
+      topicName: 'projects/gmail-api-sandbox-391202/topics/GmailAPISandbox',
+      labelFilterBehavior: 'include',
+    },
+  }
+}
+
 const auth = {
   type: 'OAuth2',
   user: 'sohjeyeong@gmail.com',
@@ -69,19 +86,6 @@ const oAuth2Client = new google.auth.OAuth2(
 )
 
 oAuth2Client.setCredentials({ refresh_token: process.env.REFRESH_TOKEN })
-
-async function getUser(req, res) {
-  try {
-    const url = `https://gmail.googleapis.com/gmail/v1/users/${req.query.email}/profile`
-    const { token } = await oAuth2Client.getAccessToken()
-    const config = generateConfig(url, token)
-    const response = await axios(config)
-    res.json(response.data)
-  } catch (error) {
-    console.log(error)
-    res.send(error)
-  }
-}
 
 // Controllers.
 app.get('/', (req, res) => res.render('home'))
@@ -108,6 +112,43 @@ app.get(
   }
 )
 
-app.get('/user', getUser)
+app.get('/gmail/user', async (req, res) => {
+  try {
+    const url = `https://gmail.googleapis.com/gmail/v1/users/${req.query.email}/profile`
+    const { token } = await oAuth2Client.getAccessToken()
+    const config = generateConfig(url, token)
+    const response = await axios(config)
+    res.json(response.data)
+  } catch (error) {
+    console.log(error)
+    res.send(error)
+  }
+})
+
+app.get('/gmail/labels', async (req, res) => {
+  try {
+    const url = `https://gmail.googleapis.com/gmail/v1/users/${req.query.email}/labels`
+    const { token } = await oAuth2Client.getAccessToken()
+    const config = generateConfig(url, token)
+    const response = await axios(config)
+    res.json(response.data)
+  } catch (error) {
+    console.log(error)
+    res.send(error)
+  }
+})
+
+app.get('/gmail/watch', async (req, res) => {
+  try {
+    const url = `https://gmail.googleapis.com/gmail/v1/users/${req.query.email}/watch`
+    const { token } = await oAuth2Client.getAccessToken()
+    const config = generateWatchConfig(url, token)
+    const response = await axios(config)
+    res.json(response.data)
+  } catch (error) {
+    console.log(error)
+    res.send(error)
+  }
+})
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
