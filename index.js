@@ -82,6 +82,32 @@ const oAuth2Client = new google.auth.OAuth2(
 
 oAuth2Client.setCredentials({ refresh_token: process.env.REFRESH_TOKEN })
 
+// Pub/sub.
+const subscriptionNameOrId =
+  'projects/gmail-api-sandbox-391202/subscriptions/my-sub'
+
+const pubSubClient = new PubSub()
+
+function listenForEmails() {
+  // References an existing subscription
+  const subscription = pubSubClient.subscription(subscriptionNameOrId)
+
+  // Create an event handler to handle messages
+  const messageHandler = (message) => {
+    console.log(`Received message ${message.id}:`)
+    console.log(`\tData: ${message.data}`)
+    console.log(`\tAttributes: ${message.attributes}`)
+
+    // "Ack" (acknowledge receipt of) the message
+    message.ack()
+  }
+
+  // Listen for new messages until timeout is hit
+  subscription.on('message', messageHandler)
+}
+
+listenForEmails()
+
 // Controllers.
 app.get('/', (req, res) => res.render('home'))
 
@@ -113,19 +139,6 @@ app.get(
 app.get('/gmail/user', async (req, res) => {
   try {
     const url = `https://gmail.googleapis.com/gmail/v1/users/${req.query.email}/profile`
-    const { token } = await oAuth2Client.getAccessToken()
-    const config = generateConfig(url, token)
-    const response = await axios(config)
-    res.json(response.data)
-  } catch (error) {
-    console.log(error)
-    res.send(error)
-  }
-})
-
-app.get('/gmail/labels', async (req, res) => {
-  try {
-    const url = `https://gmail.googleapis.com/gmail/v1/users/${req.query.email}/labels`
     const { token } = await oAuth2Client.getAccessToken()
     const config = generateConfig(url, token)
     const response = await axios(config)
