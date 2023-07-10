@@ -88,15 +88,29 @@ const subscriptionNameOrId =
 
 const pubSubClient = new PubSub()
 
+const getHistory = async (email, historyId) => {
+  try {
+    const url = `https://gmail.googleapis.com/gmail/v1/users/${email}/history?startHistoryId=${historyId}&labelId=${'INBOX'}`
+    const { token } = await oAuth2Client.getAccessToken()
+    const config = generateConfig(url, token)
+    const response = await axios(config)
+    console.log(response.data.history)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 function listenForEmails() {
   // References an existing subscription
   const subscription = pubSubClient.subscription(subscriptionNameOrId)
 
   // Create an event handler to handle messages
-  const messageHandler = (message) => {
-    console.log(`Received message ${message.id}:`)
-    console.log(`\tData: ${message.data}`)
-    console.log(`\tAttributes: ${message.attributes}`)
+  const messageHandler = async (message) => {
+    const { emailAddress, historyId } = message.data
+
+    if (emailAddress === 'sohjeyeong@gmail.com' && historyId) {
+      await getHistory(emailAddress, historyId)
+    }
 
     // "Ack" (acknowledge receipt of) the message
     message.ack()
