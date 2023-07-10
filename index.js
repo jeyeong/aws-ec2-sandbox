@@ -1,5 +1,10 @@
 require('dotenv').config()
 
+const useAWS = false
+const localDomain = 'https://0be9-24-17-127-170.ngrok-free.app'
+const AWSDomain = 'http://locavorapi.com'
+const domainToUse = useAWS ? AWSDomain : localDomain
+
 const express = require('express')
 const cors = require('cors')
 const passport = require('passport')
@@ -21,13 +26,11 @@ passport.use(
     {
       clientID: process.env.CLIENT_ID,
       clientSecret: process.env.CLIENT_SECRET,
-      callbackURL:
-        'https://0be9-24-17-127-170.ngrok-free.app/auth/google/callback',
+      callbackURL: `${domainToUse}/auth/google/callback`,
     },
     (accessToken, refreshToken, profile, done) => {
-      console.log('access token', accessToken)
+      // console.log('access token', accessToken)
       console.log('refresh token', refreshToken)
-      //   console.log('profile', profile)
       done(null, profile, accessToken)
     }
   )
@@ -39,7 +42,7 @@ const port = 3100
 // Middleware.
 app.set('view engine', 'ejs')
 
-app.use(session({ secret: 'dog', resave: false, saveUninitialized: true }))
+app.use(session({ secret: 'locavore', resave: false, saveUninitialized: true }))
 app.use(cors({ origin: '*' }))
 app.use(passport.initialize())
 
@@ -65,24 +68,16 @@ const generateWatchConfig = (url, accessToken) => {
     },
     data: {
       labelIds: ['INBOX'],
-      topicName: 'projects/gmail-api-sandbox-391202/topics/GmailAPISandbox',
+      topicName: 'projects/gmail-api-sandbox-391202/topics/my-topic',
       labelFilterBehavior: 'include',
     },
   }
 }
 
-const auth = {
-  type: 'OAuth2',
-  user: 'sohjeyeong@gmail.com',
-  clientId: process.env.CLIENT_ID,
-  clientSecret: process.env.CLIENT_SECRET,
-  refreshToken: process.env.REFRESH_TOKEN,
-}
-
 const oAuth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
   process.env.CLIENT_SECRET,
-  'https://77f2-24-17-127-170.ngrok-free.app/auth/google/callback'
+  `${domainToUse}/auth/google/callback`
 )
 
 oAuth2Client.setCredentials({ refresh_token: process.env.REFRESH_TOKEN })
@@ -107,8 +102,11 @@ app.get(
   '/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
-    // console.log(req)
-    res.json(req.user)
+    try {
+      res.send('Authenticated')
+    } catch (error) {
+      console.log(error)
+    }
   }
 )
 
@@ -145,6 +143,38 @@ app.get('/gmail/watch', async (req, res) => {
     const config = generateWatchConfig(url, token)
     const response = await axios(config)
     res.json(response.data)
+  } catch (error) {
+    console.log(error)
+    res.send(error)
+  }
+})
+
+app.get('/gmail/history', async (req, res) => {
+  try {
+    const url = `https://gmail.googleapis.com/gmail/v1/users/${
+      req.query.email
+    }/history?startHistoryId=${1924436}&labelId=${'INBOX'}`
+    const { token } = await oAuth2Client.getAccessToken()
+    const config = generateConfig(url, token)
+    const response = await axios(config)
+    const emails = response.data.history
+    res.json(emails)
+  } catch (error) {
+    console.log(error)
+    res.send(error)
+  }
+})
+
+app.get('/gmail/threads', async (req, res) => {
+  try {
+    const url = `https://gmail.googleapis.com/gmail/v1/users/${
+      req.query.email
+    }/threads/${'1893ccb06538653a'}`
+    const { token } = await oAuth2Client.getAccessToken()
+    const config = generateConfig(url, token)
+    const response = await axios(config)
+    const data = response.data
+    res.json(data)
   } catch (error) {
     console.log(error)
     res.send(error)

@@ -3,7 +3,7 @@
  */
 const subscriptionNameOrId =
   'projects/gmail-api-sandbox-391202/subscriptions/my-sub'
-const timeout = 300
+const timeout = 3600
 
 // Imports the Google Cloud client library
 const { PubSub } = require('@google-cloud/pubsub')
