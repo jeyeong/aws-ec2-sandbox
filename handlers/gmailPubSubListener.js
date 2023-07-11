@@ -1,17 +1,31 @@
 const { PubSub } = require('@google-cloud/pubsub')
+const { google } = require('googleapis')
 const axios = require('axios')
 
 const { generateGoogleRequestForAxios } = require('../utils/requestGenerators')
+const { domainToUse } = require('../constants')
 
 const subscriptionNameOrId =
   'projects/gmail-api-sandbox-391202/subscriptions/my-sub'
 
+const oAuth2Client = new google.auth.OAuth2(
+  process.env.CLIENT_ID,
+  process.env.CLIENT_SECRET,
+  `${domainToUse}/auth/google/callback`
+)
+
+oAuth2Client.setCredentials({ refresh_token: process.env.REFRESH_TOKEN })
+
+// State.
+let previousHistoryID = '1930550'
+const messagesParsed = new Set()
+
 // Pub/Sub.
 const pubSubClient = new PubSub()
 
-const getMessage = async (email, messageId) => {
+const getMessage = async (emailAddress, messageId) => {
   try {
-    const url = `https://gmail.googleapis.com/gmail/v1/users/${email}/messages/${messageId}`
+    const url = `https://gmail.googleapis.com/gmail/v1/users/${emailAddress}/messages/${messageId}`
     const { token } = await oAuth2Client.getAccessToken()
     const request = generateGoogleRequestForAxios(url, token)
     const response = await axios(request)
@@ -32,28 +46,31 @@ const getMessage = async (email, messageId) => {
   }
 }
 
-const getHistory = async (email, historyId) => {
+const getHistory = async (emailAddress, historyId) => {
   try {
-    const url = `https://gmail.googleapis.com/gmail/v1/users/${email}/history?startHistoryId=${historyId}&labelId=${'INBOX'}`
+    const url = `https://gmail.googleapis.com/gmail/v1/users/${emailAddress}/history?startHistoryId=${historyId}&labelId=${'INBOX'}`
     const { token } = await oAuth2Client.getAccessToken()
     const request = generateGoogleRequestForAxios(url, token)
     const response = await axios(request)
 
-    const emails = response.data?.history
-    const firstEmail = emails?.[0]
-    const firstEmailId = firstEmail?.messages?.[0]?.id
+    const emails = response.data?.history || []
 
-    if (firstEmailId) {
-      await getMessage(email, firstEmailId)
-    } else {
-      console.log('No email to read.')
+    for (const email of emails) {
+      // Only read emails that were sent.
+      if (email.messagesAdded) {
+        const messageId = email.messagesAdded?.[0]?.message?.id
+        if (messageId && !messagesParsed.has(messageId)) {
+          messagesParsed.add(messageId)
+          await getMessage(emailAddress, messageId)
+
+          break
+        }
+      }
     }
   } catch (error) {
     console.error(error)
   }
 }
-
-let previousHistoryID = '1927186'
 
 const listenForEmails = () => {
   // References an existing subscription

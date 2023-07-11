@@ -18,7 +18,7 @@ const generateGmailWatchRequestForAxios = (url, accessToken) => {
       'Content-type': 'application/json',
     },
     data: {
-      labelIds: ['INBOX'],
+      labelIds: ['UNREAD'],
       topicName: 'projects/gmail-api-sandbox-391202/topics/my-topic',
       labelFilterBehavior: 'include',
     },
