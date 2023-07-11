@@ -2,6 +2,9 @@ const express = require('express')
 const passport = require('passport')
 const GoogleStrategy = require('passport-google-oauth20').Strategy
 
+const {
+  createUserMetadataWithRefreshToken,
+} = require('../handlers/firestoreFunctions')
 const { domainToUse } = require('../constants')
 
 // Router.
@@ -22,8 +25,14 @@ passport.use(
       clientSecret: process.env.CLIENT_SECRET,
       callbackURL: `${domainToUse}/auth/google/callback`,
     },
-    (accessToken, refreshToken, profile, done) => {
-      console.log(`User's refresh token is: ${refreshToken}`)
+    async (accessToken, refreshToken, profile, done) => {
+      const email = profile?.emails?.[0]?.value
+
+      if (email) {
+        await createUserMetadataWithRefreshToken(email, refreshToken)
+      }
+
+      console.log(`${profile.displayName} refresh token is: ${refreshToken}`)
       done(null, profile, accessToken)
     }
   )
