@@ -3,6 +3,12 @@ const { google } = require('googleapis')
 const axios = require('axios')
 
 const { generateGoogleRequestForAxios } = require('../utils/requestGenerators')
+const {
+  filterOrderEmail,
+  ParseOrderDetails,
+  ParseDeliveryDate,
+} = require('../utils/chatGPT')
+const { addOrderToUser } = require('./firestoreFunctions')
 const { domainToUse } = require('../constants')
 
 const subscriptionNameOrId =
@@ -17,29 +23,78 @@ const oAuth2Client = new google.auth.OAuth2(
 oAuth2Client.setCredentials({ refresh_token: process.env.REFRESH_TOKEN })
 
 // State.
-let previousHistoryID = '1930550'
+let previousHistoryID = '0'
 const messagesParsed = new Set()
 
 // Pub/Sub.
 const pubSubClient = new PubSub()
 
 const getMessage = async (emailAddress, messageId) => {
+  const padWith0 = (m) => {
+    const asStr = m.toString()
+    return asStr.length >= 2 ? asStr : `0${asStr}`
+  }
+
   try {
     const url = `https://gmail.googleapis.com/gmail/v1/users/${emailAddress}/messages/${messageId}`
     const { token } = await oAuth2Client.getAccessToken()
     const request = generateGoogleRequestForAxios(url, token)
     const response = await axios(request)
 
-    const messageInPlaintextBase64 =
-      response?.data?.payload?.parts?.[0]?.body?.data
+    const payload = response?.data?.payload
 
-    if (messageInPlaintextBase64) {
-      const messageInPlaintextUTF8 = Buffer.from(
-        messageInPlaintextBase64,
-        'base64'
-      ).toString('utf-8')
+    if (payload) {
+      const today = new Date()
 
-      console.log(`The message in the email is:\n${messageInPlaintextUTF8}`)
+      let title = ''
+      let sender = ''
+      let date = `${today.getFullYear()}-${padWith0(
+        today.getMonth() + 1
+      )}-${today.getDate()}`
+      let message = ''
+
+      for (const { name, value } of payload.headers) {
+        if (name === 'From') {
+          sender = value
+        } else if (name === 'Subject') {
+          title = value
+        } else if (name === 'Date') {
+          const receivedDate = new Date(value)
+          date = `${receivedDate.getFullYear()}-${padWith0(
+            receivedDate.getMonth() + 1
+          )}-${receivedDate.getDate()}`
+        }
+      }
+
+      const messageInPlaintextBase64 =
+        response?.data?.payload?.parts?.[0]?.body?.data
+
+      if (messageInPlaintextBase64) {
+        const messageInPlaintextUTF8 = Buffer.from(
+          messageInPlaintextBase64,
+          'base64'
+        ).toString('utf-8')
+
+        message = messageInPlaintextUTF8
+      }
+
+      const chatGPTInput = {
+        title,
+        sender,
+        date,
+        message,
+      }
+
+      const isOrder = await filterOrderEmail(chatGPTInput)
+      const lines = JSON.parse(await ParseOrderDetails(chatGPTInput))
+      const deliveryDate = await ParseDeliveryDate(chatGPTInput)
+
+      const orderDue = new Date(`${deliveryDate}T20:00:00`)
+
+      if (isOrder === 'yes') {
+        console.log('Adding an order to Firestore', sender, lines)
+        await addOrderToUser(emailAddress, sender, lines, orderDue)
+      }
     }
   } catch (error) {
     console.error(error)
@@ -54,6 +109,7 @@ const getHistory = async (emailAddress, historyId) => {
     const response = await axios(request)
 
     const emails = response.data?.history || []
+    emails.reverse()
 
     for (const email of emails) {
       // Only read emails that were sent.

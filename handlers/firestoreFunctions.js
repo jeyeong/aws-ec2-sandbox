@@ -34,7 +34,7 @@ const getUserDetailsFromEmail = async (email) => {
   return snapshot.docs[0].data()
 }
 
-const addOrderToUser = async (email) => {
+const addOrderToUser = async (email, sender, lines, orderDue) => {
   const userDetails = await getUserDetailsFromEmail(email)
 
   if (userDetails && userDetails.uid) {
@@ -45,28 +45,25 @@ const addOrderToUser = async (email) => {
       .doc(uid)
       .collection('orders')
 
-    const today = new Date()
-    const tomorrow = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate() + 1,
-      today.getHours(),
-      today.getMinutes(),
-      today.getSeconds()
-    )
+    // const today = new Date()
+    // const tomorrow = new Date(
+    //   today.getFullYear(),
+    //   today.getMonth(),
+    //   today.getDate() + 1,
+    //   today.getHours(),
+    //   today.getMinutes(),
+    //   today.getSeconds()
+    // )
 
     return ordersSubcollectionRef.add({
-      orderDue: Timestamp.fromDate(tomorrow),
-      orderDate: Timestamp.fromDate(today),
+      orderDue: Timestamp.fromDate(orderDue),
+      orderDate: new Date(),
       customer: {
-        senderName: 'James Soh',
-        companyName: 'Test Restaurant',
+        senderName: sender,
+        companyName: sender,
         email: 'customer@test.com',
       },
-      lines: [
-        { product: 'Lions Mane', unit: 'lb', quantity: 1 },
-        { product: 'Maitake Mushroom', unit: 'lb', quantity: 1 },
-      ],
+      lines: lines,
       status: 'pending',
     })
   }
