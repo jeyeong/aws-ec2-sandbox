@@ -19,6 +19,17 @@ const createUserMetadataWithRefreshToken = async (email, refreshToken) => {
   })
 }
 
+const getUserRefreshToken = async (email) => {
+  if (!email) {
+    return null
+  }
+
+  const docRef = db.collection('user_metadata').doc(email)
+  const snapshot = await docRef.get()
+
+  return snapshot.data()?.refreshToken
+}
+
 const updateHistoryIdOnUserMetadata = async (email, newHistoryId) => {
   const docRef = db.collection('user_metadata').doc(email)
   return await docRef.update({ previousHistoryId: newHistoryId })
@@ -45,16 +56,6 @@ const addOrderToUser = async (email, sender, lines, orderDue) => {
       .doc(uid)
       .collection('orders')
 
-    // const today = new Date()
-    // const tomorrow = new Date(
-    //   today.getFullYear(),
-    //   today.getMonth(),
-    //   today.getDate() + 1,
-    //   today.getHours(),
-    //   today.getMinutes(),
-    //   today.getSeconds()
-    // )
-
     return ordersSubcollectionRef.add({
       orderDue: Timestamp.fromDate(orderDue),
       orderDate: new Date(),
@@ -71,6 +72,7 @@ const addOrderToUser = async (email, sender, lines, orderDue) => {
 
 module.exports = {
   createUserMetadataWithRefreshToken,
+  getUserRefreshToken,
   updateHistoryIdOnUserMetadata,
   getUserDetailsFromEmail,
   addOrderToUser,

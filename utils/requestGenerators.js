@@ -17,11 +17,6 @@ const generateGmailWatchRequestForAxios = (url, accessToken) => {
       Authorization: `Bearer ${accessToken} `,
       'Content-type': 'application/json',
     },
-    data: {
-      labelIds: ['UNREAD'],
-      topicName: 'projects/gmail-api-sandbox-391202/topics/my-topic',
-      labelFilterBehavior: 'include',
-    },
   }
 }
 
