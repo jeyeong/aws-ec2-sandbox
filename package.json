@@ -19,6 +19,7 @@
     "express-session": "^1.17.3",
     "firebase-admin": "^11.9.0",
     "googleapis": "^120.0.0",
+    "intuit-oauth": "^4.0.0",
     "openai": "^3.3.0",
     "passport": "^0.6.0",
     "passport-google-oauth20": "^2.0.0"

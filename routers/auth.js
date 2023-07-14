@@ -10,6 +10,10 @@ const { domainToUse } = require('../constants')
 // Router.
 const authRouter = express.Router()
 
+/*************************
+ * Google Authentication *
+ *************************/
+
 // Passport setup.
 passport.serializeUser((user, done) => {
   done(null, user)
@@ -66,5 +70,44 @@ authRouter.get(
     }
   }
 )
+
+/*****************************
+ * QuickBooks Authentication *
+ *****************************/
+
+const IntuitOAuthClient = require('intuit-oauth')
+
+const oauthClient = new IntuitOAuthClient({
+  clientId: process.env.INTUIT_CLIENT_ID,
+  clientSecret: process.env.INTUIT_CLIENT_SECRET,
+  environment: 'sandbox',
+  redirectUri: `${domainToUse}/auth/quickbooks/callback`,
+})
+
+authRouter.get('/quickbooks', (req, res) => {
+  const authUri = oauthClient.authorizeUri({
+    scope: [
+      IntuitOAuthClient.scopes.Accounting,
+      IntuitOAuthClient.scopes.OpenId,
+    ],
+    state: 'state',
+  })
+
+  res.redirect(authUri)
+})
+
+authRouter.get('/quickbooks/callback', async (req, res) => {
+  const parseRedirect = req.url
+
+  try {
+    const authResponse = await oauthClient.createToken(parseRedirect)
+    console.log('The Token is  ' + JSON.stringify(authResponse.getJson()))
+
+    res.send('ok')
+  } catch (error) {
+    console.error('Quickbook auth error', error)
+    res.send('Error occured on server.')
+  }
+})
 
 module.exports = authRouter
