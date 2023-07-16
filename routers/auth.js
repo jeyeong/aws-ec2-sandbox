@@ -2,9 +2,7 @@ const express = require('express')
 const passport = require('passport')
 const GoogleStrategy = require('passport-google-oauth20').Strategy
 
-const {
-  createUserMetadataWithRefreshToken,
-} = require('../handlers/firestoreFunctions')
+const { setUserMetadata } = require('../handlers/firestoreFunctions')
 const { domainToUse } = require('../constants')
 
 // Router.
@@ -33,7 +31,7 @@ passport.use(
       const email = profile?.emails?.[0]?.value
 
       if (email) {
-        await createUserMetadataWithRefreshToken(email, refreshToken)
+        await setUserMetadata(email, { gmailRefreshToken: refreshToken })
       }
 
       console.log(`${profile.displayName} refresh token is: ${refreshToken}`)

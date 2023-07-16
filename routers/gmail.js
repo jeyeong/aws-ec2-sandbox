@@ -6,7 +6,7 @@ const {
   generateGoogleRequestForAxios,
   generateGmailWatchRequestForAxios,
 } = require('../utils/requestGenerators')
-const { getUserRefreshToken } = require('../handlers/firestoreFunctions')
+const { getUserMetadata } = require('../handlers/firestoreFunctions')
 const { domainToUse } = require('../constants')
 
 // Router.
@@ -33,13 +33,13 @@ gmailRouter.get('/user', async (req, res) => {
   const email = req.query.email
 
   try {
-    const refreshToken = await getUserRefreshToken(email)
-    if (!refreshToken) {
+    const { gmailRefreshToken } = await getUserMetadata(email)
+    if (!gmailRefreshToken) {
       res.send('User refresh token is not in database.')
       return
     }
 
-    _setOAuth2ClientRefreshToken(refreshToken)
+    _setOAuth2ClientRefreshToken(gmailRefreshToken)
 
     const url = `https://gmail.googleapis.com/gmail/v1/users/${email}/profile`
     const { token } = await oAuth2Client.getAccessToken()
@@ -61,13 +61,13 @@ gmailRouter.get('/watch', async (req, res) => {
   const email = req.query.email
 
   try {
-    const refreshToken = await getUserRefreshToken(email)
-    if (!refreshToken) {
+    const { gmailRefreshToken } = await getUserMetadata(email)
+    if (!gmailRefreshToken) {
       res.send('User refresh token is not in database.')
       return
     }
 
-    _setOAuth2ClientRefreshToken(refreshToken)
+    _setOAuth2ClientRefreshToken(gmailRefreshToken)
 
     const url = `https://gmail.googleapis.com/gmail/v1/users/${email}/watch`
     const { token } = await oAuth2Client.getAccessToken()
@@ -96,13 +96,13 @@ gmailRouter.get('/stop-watching', async (req, res) => {
   const email = req.query.email
 
   try {
-    const refreshToken = await getUserRefreshToken(email)
-    if (!refreshToken) {
+    const { gmailRefreshToken } = await getUserMetadata(email)
+    if (!gmailRefreshToken) {
       res.send('User refresh token is not in database.')
       return
     }
 
-    _setOAuth2ClientRefreshToken(refreshToken)
+    _setOAuth2ClientRefreshToken(gmailRefreshToken)
 
     const url = `https://gmail.googleapis.com/gmail/v1/users/${email}/stop`
     const { token } = await oAuth2Client.getAccessToken()

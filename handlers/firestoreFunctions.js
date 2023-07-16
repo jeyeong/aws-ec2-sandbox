@@ -11,15 +11,27 @@ admin.initializeApp({
 const db = getFirestore()
 
 // User metadata handlers.
-const createUserMetadataWithRefreshToken = async (email, refreshToken) => {
+const setUserMetadata = async (
+  email,
+  { gmailRefreshToken, quickbooksAccessToken, quickbooksRefreshToken }
+) => {
+  const fieldsToSet = {}
+
+  if (gmailRefreshToken) {
+    fieldsToSet.gmailRefreshToken = gmailRefreshToken
+  }
+  if (quickbooksAccessToken) {
+    fieldsToSet.quickbooksAccessToken = quickbooksAccessToken
+  }
+  if (quickbooksRefreshToken) {
+    fieldsToSet.quickbooksRefreshToken = quickbooksRefreshToken
+  }
+
   const docRef = db.collection('user_metadata').doc(email)
-  return await docRef.set({
-    refreshToken,
-    previousHistoryId: '-1',
-  })
+  return await docRef.set(fieldsToSet, { merge: true })
 }
 
-const getUserRefreshToken = async (email) => {
+const getUserMetadata = async (email) => {
   if (!email) {
     return null
   }
@@ -27,13 +39,13 @@ const getUserRefreshToken = async (email) => {
   const docRef = db.collection('user_metadata').doc(email)
   const snapshot = await docRef.get()
 
-  return snapshot.data()?.refreshToken
+  return snapshot.data()
 }
 
-const updateHistoryIdOnUserMetadata = async (email, newHistoryId) => {
-  const docRef = db.collection('user_metadata').doc(email)
-  return await docRef.update({ previousHistoryId: newHistoryId })
-}
+// const updateHistoryIdOnUserMetadata = async (email, newHistoryId) => {
+//   const docRef = db.collection('user_metadata').doc(email)
+//   return await docRef.update({ previousHistoryId: newHistoryId })
+// }
 
 // Order handlers.
 const getUserDetailsFromEmail = async (email) => {
@@ -71,9 +83,8 @@ const addOrderToUser = async (email, sender, lines, orderDue) => {
 }
 
 module.exports = {
-  createUserMetadataWithRefreshToken,
-  getUserRefreshToken,
-  updateHistoryIdOnUserMetadata,
+  setUserMetadata,
+  getUserMetadata,
   getUserDetailsFromEmail,
   addOrderToUser,
 }
