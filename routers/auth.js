@@ -83,12 +83,18 @@ const oauthClient = new IntuitOAuthClient({
 })
 
 authRouter.get('/quickbooks', (req, res) => {
+  if (!req.query.email) {
+    res.send('"email" query parameter is required.')
+    return
+  }
+
   const authUri = oauthClient.authorizeUri({
     scope: [
       IntuitOAuthClient.scopes.Accounting,
       IntuitOAuthClient.scopes.OpenId,
+      IntuitOAuthClient.scopes.Email,
     ],
-    state: 'state',
+    state: JSON.stringify({ email: req.query.email }),
   })
 
   res.redirect(authUri)
@@ -99,7 +105,21 @@ authRouter.get('/quickbooks/callback', async (req, res) => {
 
   try {
     const authResponse = await oauthClient.createToken(parseRedirect)
-    console.log('The Token is  ' + JSON.stringify(authResponse.getJson()))
+
+    const {
+      realmId = 'nil',
+      access_token = 'nil',
+      refresh_token = 'nil',
+      state,
+    } = authResponse.token
+
+    const { email } = JSON.parse(state)
+
+    await setUserMetadata(email, {
+      quickbooksRealmId: realmId,
+      quickbooksAccessToken: access_token,
+      quickbooksRefreshToken: refresh_token,
+    })
 
     res.send('ok')
   } catch (error) {

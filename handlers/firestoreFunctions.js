@@ -13,12 +13,20 @@ const db = getFirestore()
 // User metadata handlers.
 const setUserMetadata = async (
   email,
-  { gmailRefreshToken, quickbooksAccessToken, quickbooksRefreshToken }
+  {
+    gmailRefreshToken,
+    quickbooksRealmId,
+    quickbooksAccessToken,
+    quickbooksRefreshToken,
+  }
 ) => {
   const fieldsToSet = {}
 
   if (gmailRefreshToken) {
     fieldsToSet.gmailRefreshToken = gmailRefreshToken
+  }
+  if (quickbooksRealmId) {
+    fieldsToSet.quickbooksRealmId = quickbooksRealmId
   }
   if (quickbooksAccessToken) {
     fieldsToSet.quickbooksAccessToken = quickbooksAccessToken
